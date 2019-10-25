@@ -33,7 +33,6 @@ class GNNBenchmarkDataset(object):
             self.dir, 'gnn_benckmark', self._url[name.lower()].split('/')[-1])
         download(self._url[name.lower()], path=self.path)
         self.load_npz()
-        print("aaa")
         #self.data = [g]
 
     def load_npz(self):
@@ -69,10 +68,10 @@ class GNNBenchmarkDataset(object):
         self.features = attr_matrix
         self.labels   = labels
         self.num_labels   = np.max(labels)+1
-        
-        self.train_mask = _sample_mask(range(15000), labels.shape[0])
-        self.val_mask   = _sample_mask(range(15000,17000), labels.shape[0])
-        self.test_mask  = _sample_mask(range(17000,19000), labels.shape[0])
+        num_nodes  = labels.shape[0]
+        self.train_mask = _sample_mask(range(int(num_nodes*0.5)), num_nodes)
+        self.val_mask   = _sample_mask(range(int(num_nodes*0.55), int(num_nodes*0.75)), num_nodes)
+        self.test_mask  = _sample_mask(range(int(num_nodes*0.80), int(num_nodes*0.95)), num_nodes)
 
         #g = DGLGraph()
         #g.add_nodes(num_nodes)
@@ -104,7 +103,6 @@ class CoraFull(GNNBenchmarkDataset):
     Reference: https://github.com/shchur/gnn-benchmark#datasets
     """
     _url = {"cora_full":'https://github.com/shchur/gnn-benchmark/raw/master/data/npz/cora_full.npz'}
-    print("aaaaaaaaaaa")
     def __init__(self):
         super().__init__("cora_full")
 
