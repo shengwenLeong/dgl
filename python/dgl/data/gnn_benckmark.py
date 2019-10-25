@@ -1,10 +1,17 @@
 import scipy.sparse as sp
 import numpy as np
+import networkx as nx
 from dgl import graph_index, DGLGraph, transform
 import os
 from .utils import download, extract_archive, get_download_dir, _get_dgl_url
 
 __all__=["AmazonCoBuy", "Coauthor", 'CoraFull']
+
+def _sample_mask(idx, l):
+    """Create mask."""
+    mask = np.zeros(l)
+    mask[idx] = 1
+    return mask
 
 def eliminate_self_loops(A):
     """Remove self-loops from the adjacency matrix."""
@@ -25,15 +32,15 @@ class GNNBenchmarkDataset(object):
         self.path = os.path.join(
             self.dir, 'gnn_benckmark', self._url[name.lower()].split('/')[-1])
         download(self._url[name.lower()], path=self.path)
-        g = self.load_npz(self.path)
-        self.data = [g]
+        self.load_npz()
+        print("aaa")
+        #self.data = [g]
 
-    @staticmethod
-    def load_npz(file_name):
-        with np.load(file_name) as loader:
+    def load_npz(self):
+        with np.load(self.path) as loader:
             loader = dict(loader)
             num_nodes = loader['adj_shape'][0]
-            adj_matrix = sp.csr_matrix((loader['adj_data'], loader['adj_indices'], loader['adj_indptr']),
+            adj = sp.csr_matrix((loader['adj_data'], loader['adj_indices'], loader['adj_indptr']),
                                     shape=loader['adj_shape']).tocoo()
 
             if 'attr_data' in loader:
@@ -55,20 +62,38 @@ class GNNBenchmarkDataset(object):
                 labels = loader['labels']
             else:
                 labels = None
-        g = DGLGraph()
-        g.add_nodes(num_nodes)
-        g.add_edges(adj_matrix.row, adj_matrix.col)
-        g.add_edges(adj_matrix.col, adj_matrix.row)
-        g.ndata['feat'] = attr_matrix
-        g.ndata['label'] = labels
-        return g     
+        
+        adj = adj + adj.T.multiply(adj.T > adj) - adj.multiply(adj.T >adj)
+        self.graph = nx.from_scipy_sparse_matrix(adj, create_using=nx.DiGraph())
+
+        self.features = attr_matrix
+        self.labels   = labels
+        self.num_labels   = np.max(labels)+1
+        
+        self.train_mask = _sample_mask(range(15000), labels.shape[0])
+        self.val_mask   = _sample_mask(range(15000,17000), labels.shape[0])
+        self.test_mask  = _sample_mask(range(17000,19000), labels.shape[0])
+
+        #g = DGLGraph()
+        #g.add_nodes(num_nodes)
+        #g.add_edges(adj_matrix.row, adj_matrix.col)
+        #g.add_edges(adj_matrix.col, adj_matrix.row)
+        #g.ndata['feat'] = attr_matrix
+        #g.ndata['label'] = labels
+        #return g     
 
     def __getitem__(self, idx):
         assert idx == 0, "This dataset has only one graph"
-        return self.data[0]
+        g = DGLGraph(self.graph)
+        g.ndata['train_mask'] = self.train_mask
+        g.ndata['val_mask'] = self.val_mask
+        g.ndata['test_mask'] = self.test_mask
+        g.ndata['label'] = self.labels
+        g.ndata['feat'] = self.features
+        return g
 
     def __len__(self):
-        return len(self.data)
+        return 1
 
 
 class CoraFull(GNNBenchmarkDataset):
@@ -79,7 +104,7 @@ class CoraFull(GNNBenchmarkDataset):
     Reference: https://github.com/shchur/gnn-benchmark#datasets
     """
     _url = {"cora_full":'https://github.com/shchur/gnn-benchmark/raw/master/data/npz/cora_full.npz'}
-
+    print("aaaaaaaaaaa")
     def __init__(self):
         super().__init__("cora_full")
 
