@@ -20,6 +20,9 @@ _urls = {
     'citeseer' : 'dataset/citeseer.zip',
     'pubmed' : 'dataset/pubmed.zip',
     'cora_binary' : 'dataset/cora_binary.zip',
+    'nell.0.001' : 'dataset/nell.0.001.zip',
+    'nell.0.01' : 'dataset/nell.0.01.zip',
+    'nell.0.1' : 'dataset/nell.0.1.zip',
 }
 
 def _pickle_load(pkl_file):
@@ -38,7 +41,7 @@ class CitationGraphDataset(object):
       name can be 'citeseer' or 'pubmed'.
     """
     def __init__(self, name):
-        assert name.lower() in ['citeseer', 'pubmed']
+        assert name.lower() in ['citeseer', 'pubmed', 'nell.0.001', 'nell.0.01', 'nell.0.1']
         self.name = name
         self.dir = get_download_dir()
         self.zip_file_path='{}/{}.zip'.format(self.dir, name)
@@ -85,6 +88,16 @@ class CitationGraphDataset(object):
             tx = tx_extended
             ty_extended = np.zeros((len(test_idx_range_full), y.shape[1]))
             ty_extended[test_idx_range-min(test_idx_range), :] = ty
+            ty = ty_extended
+        if self.name == 'nell.0.001' or self.name == 'nell.0.01' or self.name == 'nell.0.1':
+            # Find relation nodes, add them as zero-vecs into the right position
+            test_idx_range_full = range(allx.shape[0], len(graph))
+            isolated_node_idx = np.setdiff1d(test_idx_range_full, test_idx_reorder)
+            tx_extended = sp.lil_matrix((len(test_idx_range_full), x.shape[1]))
+            tx_extended[test_idx_range-allx.shape[0], :] = tx
+            tx = tx_extended
+            ty_extended = np.zeros((len(test_idx_range_full), y.shape[1]))
+            ty_extended[test_idx_range-allx.shape[0], :] = ty
             ty = ty_extended
 
         features = sp.vstack((allx, tx)).tolil()
@@ -137,9 +150,11 @@ class CitationGraphDataset(object):
 def _preprocess_features(features):
     """Row-normalize feature matrix and convert to tuple representation"""
     rowsum = np.array(features.sum(1))
-    r_inv = np.power(rowsum, -1).flatten()
+    #print(rowsum)
+    r_inv = np.power(rowsum, 1/2).flatten()
     r_inv[np.isinf(r_inv)] = 0.
     r_mat_inv = sp.diags(r_inv)
+    #print(r_mat_inv)
     features = r_mat_inv.dot(features)
     return np.array(features.todense())
 
@@ -168,6 +183,18 @@ def load_pubmed():
     data = CitationGraphDataset('pubmed')
     return data
 
+def load_nell_0_001():
+    data = CitationGraphDataset('nell.0.001')
+    return data
+
+def load_nell_0_01():
+    data = CitationGraphDataset('nell.0.01')
+    return data
+
+def load_nell_0_1():
+    data = CitationGraphDataset('nell.0.1')
+    return data
+
 class GCNSyntheticDataset(object):
     def __init__(self,
                  graph_generator,
@@ -184,7 +211,7 @@ class GCNSyntheticDataset(object):
 
         # generate features
         #self.features = rng.randn(num_nodes, num_feats).astype(np.float32)
-        self.features = np.zeros((num_nodes, num_feats), dtype=np.float32)
+        self.features = np.ones((num_nodes, num_feats), dtype=np.float32)
 
         # generate labels
         self.labels = rng.randint(num_classes, size=num_nodes)
@@ -228,6 +255,20 @@ def get_gnp_generator(args):
         return nx.fast_gnp_random_graph(n, p, seed, True)
     return _gen
 
+def get_RMAT_generator(args):
+    dataset_path = args.RMAT_dataset_path
+    nodes        = args.syn_nodes
+    def _gen(seed):
+        #src, dst = (np.loadtxt(dataset_path, delimiter='\t')).transpose()
+        #print(src.shape[0])
+        #data     = np.ones(src.shape[0])
+        #coo_adj  = sp.coo_matrix((data, (src, dst)), shape=(nodes, nodes))
+        #sp.save_npz("/home/liangshengwen/dataset.npz",coo_adj)
+        coo_adj  = sp.load_npz("/home/liangshengwen/dataset.npz")
+        graph    = dgl.DGLGraph(coo_adj, readonly=True)
+        return graph
+    return _gen
+
 class ScipyGraph(object):
     """A simple graph object that uses scipy matrix."""
     def __init__(self, mat):
@@ -246,7 +287,9 @@ def get_scipy_generator(args):
     n = args.syn_gnp_n
     p = (2 * np.log(n) / n) if args.syn_gnp_p == 0. else args.syn_gnp_p
     def _gen(seed):
-        return ScipyGraph(sp.random(n, n, p, format='coo'))
+        coo_adj = sp.random(n, n, p, format='coo')
+        graph = dgl.DGLGraph(coo_adj, readonly=True)
+        return graph
     return _gen
 
 def load_synthetic(args):
@@ -255,6 +298,8 @@ def load_synthetic(args):
         gen = get_gnp_generator(args)
     elif ty == 'scipy':
         gen = get_scipy_generator(args)
+    elif ty == 'RMAT':
+        gen = get_RMAT_generator(args)
     else:
         raise ValueError('Unknown graph generator type: {}'.format(ty))
     return GCNSyntheticDataset(
@@ -270,15 +315,17 @@ def register_args(parser):
     # Args for synthetic graphs.
     parser.add_argument('--syn-type', type=str, default='gnp',
             help='Type of the synthetic graph generator')
+    parser.add_argument('--syn-nodes', type=int, default=500,
+            help='Number of nodes')
     parser.add_argument('--syn-nfeats', type=int, default=500,
             help='Number of node features')
     parser.add_argument('--syn-nclasses', type=int, default=10,
             help='Number of output classes')
-    parser.add_argument('--syn-train-ratio', type=float, default=.1,
+    parser.add_argument('--syn-train-ratio', type=float, default=.6,
             help='Ratio of training nodes')
-    parser.add_argument('--syn-val-ratio', type=float, default=.2,
+    parser.add_argument('--syn-val-ratio', type=float, default=.1,
             help='Ratio of validation nodes')
-    parser.add_argument('--syn-test-ratio', type=float, default=.5,
+    parser.add_argument('--syn-test-ratio', type=float, default=.25,
             help='Ratio of testing nodes')
     # Args for GNP generator
     parser.add_argument('--syn-gnp-n', type=int, default=1000,
@@ -287,6 +334,9 @@ def register_args(parser):
             help='p in gnp random graph')
     parser.add_argument('--syn-seed', type=int, default=42,
             help='random seed')
+    # Args for RMAT generator
+    parser.add_argument('--RMAT-dataset-path', type=str, default='/home/liangshengwen/PaRMAT/Release/out.txt',
+            help='RMAT dataset path')
 
 class CoraBinary(object):
     """A mini-dataset for binary classification task using Cora.

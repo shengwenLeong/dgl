@@ -37,6 +37,12 @@ def load_data(args):
         return citegrh.load_citeseer()
     elif args.dataset == 'pubmed':
         return citegrh.load_pubmed()
+    elif args.dataset == 'nell.0.001':
+        return citegrh.load_nell_0_001()
+    elif args.dataset == 'nell.0.01':
+        return citegrh.load_nell_0_01()
+    elif args.dataset == 'nell.0.1':
+        return citegrh.load_nell_0_1()
     elif args.dataset == 'syn':
         return citegrh.load_synthetic(args)
     elif args.dataset == 'CoraFull':
