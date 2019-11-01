@@ -31,13 +31,15 @@ def main(args):
     in_feats = features.shape[1]
     n_classes = data.num_labels
     n_edges = data.graph.number_of_edges()
+    n_nodes = data.graph.number_of_nodes()
     print("""----Data statistics------'
+      #Nodes %d
       #Edges %d
       #Classes %d
       #Train samples %d
       #Val samples %d
       #Test samples %d""" %
-          (n_edges, n_classes,
+          (n_nodes, n_edges, n_classes,
               train_mask.sum().item(),
               val_mask.sum().item(),
               test_mask.sum().item()))
@@ -59,7 +61,9 @@ def main(args):
     if args.self_loop:
         g.remove_edges_from(g.selfloop_edges())
         g.add_edges_from(zip(g.nodes(), g.nodes()))
+    print("+++++++++++")
     g = DGLGraph(g)
+    print("-------")
     n_edges = g.number_of_edges()
     # normalization
     degs = g.in_degrees().float()
@@ -125,11 +129,11 @@ if __name__ == '__main__':
             help="learning rate")
     parser.add_argument("--n-epochs", type=int, default=200,
             help="number of training epochs")
-    parser.add_argument("--n-hidden", type=int, default=16,
+    parser.add_argument("--n-hidden", type=int, default=64,
             help="number of hidden gcn units")
     parser.add_argument("--n-layers", type=int, default=1,
             help="number of hidden gcn layers")
-    parser.add_argument("--weight-decay", type=float, default=5e-4,
+    parser.add_argument("--weight-decay", type=float, default=1e-5,
             help="Weight for L2 loss")
     parser.add_argument("--self-loop", action='store_true',
             help="graph self-loop (default=False)")
