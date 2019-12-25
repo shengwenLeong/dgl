@@ -121,14 +121,15 @@ def main(args):
             t0 = time.time()
         # forward
         logits = model(features)
+        torch.cuda.synchronize()
+        if epoch >= 3:
+            dur.append(time.time() - t0)
+
         loss = loss_fcn(logits[train_mask], labels[train_mask])
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
-        if epoch >= 3:
-            dur.append(time.time() - t0)
 
         acc = evaluate(model, features, labels, val_mask)
         print("Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | Accuracy {:.4f} | "
@@ -157,7 +158,7 @@ if __name__ == '__main__':
                         help="number of hidden gcn layers")
     parser.add_argument("--weight-decay", type=float, default=5e-4,
                         help="Weight for L2 loss")
-    parser.add_argument("--aggregator-type", type=str, default="gcn",
+    parser.add_argument("--aggregator-type", type=str, default="pool",
                         help="Aggregator type: mean/gcn/pool/lstm")
     args = parser.parse_args()
     print(args)

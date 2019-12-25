@@ -10,6 +10,7 @@ from .utils import download, extract_archive, get_download_dir, _get_dgl_url
 
 class RedditDataset(object):
     def __init__(self, self_loop=False):
+        self.name = 'reddit'
         download_dir = get_download_dir()
         self_loop_str = ""
         if self_loop:

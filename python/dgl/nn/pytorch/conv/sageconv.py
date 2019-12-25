@@ -1,5 +1,7 @@
 """Torch Module for GraphSAGE layer"""
 # pylint: disable= no-member, arguments-differ, invalid-name
+import torch
+import time
 from torch import nn
 from torch.nn import functional as F
 
@@ -40,11 +42,11 @@ class SAGEConv(nn.Module):
     def __init__(self,
                  in_feats,
                  out_feats,
-                 aggregator_type,
+                 aggregator_type='pool',
                  feat_drop=0.,
                  bias=True,
                  norm=None,
-                 activation=None):
+                 activation=F.relu):
         super(SAGEConv, self).__init__()
         self._in_feats = in_feats
         self._out_feats = out_feats
@@ -117,6 +119,7 @@ class SAGEConv(nn.Module):
             degs = degs.to(feat.device)
             h_neigh = (graph.ndata['neigh'] + graph.ndata['h']) / (degs.unsqueeze(-1) + 1)
         elif self._aggre_type == 'pool':
+            #graph.ndata['h'] = feat
             graph.ndata['h'] = F.relu(self.fc_pool(feat))
             graph.update_all(fn.copy_src('h', 'm'), fn.max('m', 'neigh'))
             h_neigh = graph.ndata['neigh']
@@ -132,6 +135,8 @@ class SAGEConv(nn.Module):
         else:
             rst = self.fc_self(h_self) + self.fc_neigh(h_neigh)
         # activation
+        #rst = h_neigh
+        #rst = self.fc_self(torch.cat((h_self, h_neigh),1))
         if self.activation is not None:
             rst = self.activation(rst)
         # normalization

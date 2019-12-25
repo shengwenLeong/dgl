@@ -82,8 +82,11 @@ def main(args):
     # define loss closure
     def closure():
         optimizer.zero_grad()
-        output = model(g, features)[train_mask]
-        loss_train = F.cross_entropy(output, labels[train_mask])
+        t0 = time.time()
+        output = model(g, features)
+        torch.cuda.synchronize()
+        print(time.time()-t0)
+        loss_train = F.cross_entropy(output[train_mask], labels[train_mask])
         loss_train.backward()
         return loss_train
 

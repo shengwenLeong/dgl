@@ -28,6 +28,7 @@ class GNNBenchmarkDataset(object):
 
     def __init__(self, name):
         assert name.lower() in self._url, "Name not valid"
+        self.name = name
         self.dir = get_download_dir()
         self.path = os.path.join(
             self.dir, 'gnn_benckmark', self._url[name.lower()].split('/')[-1])

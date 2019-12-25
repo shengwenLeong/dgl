@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from dgl import DGLGraph
 from dgl.data import register_data_args
-from torch.utils.tensorboard import SummaryWriter
+#from torch.utils.tensorboard import SummaryWriter
 
 from modules import GCNCluster, GraphSAGE
 from sampler import ClusterIter
@@ -49,9 +49,9 @@ def main(args):
         labels = torch.LongTensor(data.labels)
     else:
         labels = torch.FloatTensor(data.labels)
-    train_mask = torch.ByteTensor(data.train_mask).type(torch.bool)
-    val_mask = torch.ByteTensor(data.val_mask).type(torch.bool)
-    test_mask = torch.ByteTensor(data.test_mask).type(torch.bool)
+    train_mask = torch.ByteTensor(data.train_mask)
+    val_mask = torch.ByteTensor(data.val_mask)
+    test_mask = torch.ByteTensor(data.test_mask)
     in_feats = features.shape[1]
     n_classes = data.num_labels
     n_edges = data.graph.number_of_edges()
@@ -117,10 +117,10 @@ def main(args):
         model.cuda()
 
     # logger and so on
-    log_dir = save_log_dir(args)
-    writer = SummaryWriter(log_dir)
-    logger = Logger(os.path.join(log_dir, 'loggings'))
-    logger.write(args)
+    #log_dir = save_log_dir(args)
+    #writer = SummaryWriter(log_dir)
+    #logger = Logger(os.path.join(log_dir, 'loggings'))
+    #logger.write(args)
 
     # Loss function
     if multitask:
@@ -165,8 +165,8 @@ def main(args):
             # Choose your log freq dynamically when you want more info within one epoch
             if j % args.log_every == 0:
                 print(f"epoch:{epoch}/{args.n_epochs}, Iteration {j}/{len(cluster_iterator)}:training loss", loss.item())
-                writer.add_scalar('train/loss', loss.item(),
-                                  global_step=j + epoch * len(cluster_iterator))
+                #writer.add_scalar('train/loss', loss.item(),
+                #                  global_step=j + epoch * len(cluster_iterator))
         print("current memory:",
               torch.cuda.memory_allocated(device=pred.device) / 1024 / 1024)
 
@@ -181,8 +181,8 @@ def main(args):
                 print('new best val f1:', best_f1)
                 torch.save(model.state_dict(), os.path.join(
                     log_dir, 'best_model.pkl'))
-            writer.add_scalar('val/f1-mic', val_f1_mic, global_step=epoch)
-            writer.add_scalar('val/f1-mac', val_f1_mac, global_step=epoch)
+            #writer.add_scalar('val/f1-mic', val_f1_mic, global_step=epoch)
+            #writer.add_scalar('val/f1-mac', val_f1_mac, global_step=epoch)
 
     end_time = time.time()
     print(f'training using time {start_time-end_time}')
@@ -195,8 +195,8 @@ def main(args):
         model, g, labels, test_mask, multitask)
     print(
         "Test F1-mic{:.4f}, Test F1-mac{:.4f}". format(test_f1_mic, test_f1_mac))
-    writer.add_scalar('test/f1-mic', test_f1_mic)
-    writer.add_scalar('test/f1-mac', test_f1_mac)
+    #writer.add_scalar('test/f1-mic', test_f1_mic)
+    #writer.add_scalar('test/f1-mac', test_f1_mac)
 
 
 if __name__ == '__main__':

@@ -87,14 +87,15 @@ def main(args):
             t0 = time.time()
         # forward
         logits = model(g, features) # only compute the train set
+        torch.cuda.synchronize()
+        if epoch >= 3:
+            dur.append(time.time() - t0)
+
         loss = loss_fcn(logits[train_mask], labels[train_mask])
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
-        if epoch >= 3:
-            dur.append(time.time() - t0)
 
         acc = evaluate(model, g, features, labels, val_mask)
         print("Epoch {:05d} | Time(s) {:.4f} | Loss {:.4f} | Accuracy {:.4f} | "

@@ -39,7 +39,7 @@ class TAGConv(nn.Module):
     def __init__(self,
                  in_feats,
                  out_feats,
-                 k=2,
+                 k=1,
                  bias=True,
                  activation=None):
         super(TAGConv, self).__init__()
@@ -47,7 +47,7 @@ class TAGConv(nn.Module):
         self._out_feats = out_feats
         self._k = k
         self._activation = activation
-        self.lin = nn.Linear(in_feats * (self._k + 1), out_feats, bias=bias)
+        self.lin = nn.Linear(in_feats * (self._k), out_feats, bias=bias)
 
         self.reset_parameters()
 
@@ -82,17 +82,15 @@ class TAGConv(nn.Module):
         #D-1/2 A D -1/2 X
         fstack = [feat]
         for _ in range(self._k):
-
-            rst = fstack[-1] * norm
+            rst = fstack[-1]
             graph.ndata['h'] = rst
 
             graph.update_all(fn.copy_src(src='h', out='m'),
                              fn.sum(msg='m', out='h'))
             rst = graph.ndata['h']
-            rst = rst * norm
             fstack.append(rst)
 
-        rst = self.lin(th.cat(fstack, dim=-1))
+        rst = self.lin(th.add(fstack[0],fstack[1]))
 
         if self._activation is not None:
             rst = self._activation(rst)

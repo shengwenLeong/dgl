@@ -197,6 +197,7 @@ def load_nell_0_1():
 
 class GCNSyntheticDataset(object):
     def __init__(self,
+                 name,
                  graph_generator,
                  num_feats=500,
                  num_classes=10,
@@ -204,6 +205,7 @@ class GCNSyntheticDataset(object):
                  val_ratio=0.,
                  test_ratio=0.,
                  seed=None):
+        self.name = name
         rng = np.random.RandomState(seed)
         # generate graph
         self.graph = graph_generator(seed)
@@ -255,17 +257,29 @@ def get_gnp_generator(args):
         return nx.fast_gnp_random_graph(n, p, seed, True)
     return _gen
 
+def get_RMAT_generator_(dataset):
+    def _gen(seed):
+        coo_adj  = sp.load_npz('/home/liangshengwen/.dgl/{}.npz'.format(dataset))
+        graph    = dgl.DGLGraph(coo_adj, readonly=True)
+        print("load finish")
+        return graph
+    return _gen
+
+
 def get_RMAT_generator(args):
-    dataset_path = args.RMAT_dataset_path
+    dataset = args.RMAT_dataset
     nodes        = args.syn_nodes
     def _gen(seed):
-        #src, dst = (np.loadtxt(dataset_path, delimiter='\t')).transpose()
-        #print(src.shape[0])
-        #data     = np.ones(src.shape[0])
-        #coo_adj  = sp.coo_matrix((data, (src, dst)), shape=(nodes, nodes))
-        #sp.save_npz("/home/liangshengwen/dataset.npz",coo_adj)
-        coo_adj  = sp.load_npz("/home/liangshengwen/dataset.npz")
+        src, dst = (np.loadtxt('/home/liangshengwen/PaRMAT/Release/{}.txt'.format(dataset), delimiter='\t')).transpose()
+        #dprint(src.shape[0])
+        print("---load finish---")
+        data     = np.ones(src.shape[0])
+        coo_adj  = sp.coo_matrix((data, (src, dst)), shape=(nodes, nodes))
+        sp.save_npz('/home/liangshengwen/.dgl/{}.npz'.format(dataset),coo_adj)
+        #print("save finish")
+        #coo_adj  = sp.load_npz('/home/liangshengwen/.dgl/{}.npz'.format(dataset))
         graph    = dgl.DGLGraph(coo_adj, readonly=True)
+        print("load finish")
         return graph
     return _gen
 
@@ -292,7 +306,21 @@ def get_scipy_generator(args):
         return graph
     return _gen
 
+def load_RMAT(dataset,nfeats,nclasses=10):
+    name = str(dataset)
+    gen = get_RMAT_generator_(dataset)
+    return GCNSyntheticDataset(
+            name,
+            gen,
+            nfeats,
+            nclasses,
+            0.6,
+            0.1,
+            0.25,
+            42)
+
 def load_synthetic(args):
+    name = str(args.RMAT_dataset)
     ty = args.syn_type
     if ty == 'gnp':
         gen = get_gnp_generator(args)
@@ -303,6 +331,7 @@ def load_synthetic(args):
     else:
         raise ValueError('Unknown graph generator type: {}'.format(ty))
     return GCNSyntheticDataset(
+            name,
             gen,
             args.syn_nfeats,
             args.syn_nclasses,
@@ -313,11 +342,11 @@ def load_synthetic(args):
 
 def register_args(parser):
     # Args for synthetic graphs.
-    parser.add_argument('--syn-type', type=str, default='gnp',
+    parser.add_argument('--syn-type', type=str, default='RMAT',
             help='Type of the synthetic graph generator')
     parser.add_argument('--syn-nodes', type=int, default=500,
             help='Number of nodes')
-    parser.add_argument('--syn-nfeats', type=int, default=500,
+    parser.add_argument('--syn-nfeats', type=int, default=300,
             help='Number of node features')
     parser.add_argument('--syn-nclasses', type=int, default=10,
             help='Number of output classes')
@@ -335,8 +364,7 @@ def register_args(parser):
     parser.add_argument('--syn-seed', type=int, default=42,
             help='random seed')
     # Args for RMAT generator
-    parser.add_argument('--RMAT-dataset-path', type=str, default='/home/liangshengwen/PaRMAT/Release/out.txt',
-            help='RMAT dataset path')
+    parser.add_argument('--RMAT-dataset', type=str, default='20M', help='RMAT dataset path')
 
 class CoraBinary(object):
     """A mini-dataset for binary classification task using Cora.

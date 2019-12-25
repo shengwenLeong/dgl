@@ -107,8 +107,9 @@ def main(args):
         optimizer.zero_grad()
         t0 = time.time()
         logits = model(g, feats, edge_type, edge_norm)
-        loss = F.cross_entropy(logits[train_idx], labels[train_idx])
+        torch.cuda.synchronize()
         t1 = time.time()
+        loss = F.cross_entropy(logits[train_idx], labels[train_idx])
         loss.backward()
         optimizer.step()
         t2 = time.time()
@@ -120,8 +121,8 @@ def main(args):
         train_acc = torch.sum(logits[train_idx].argmax(dim=1) == labels[train_idx]).item() / len(train_idx)
         val_loss = F.cross_entropy(logits[val_idx], labels[val_idx])
         val_acc = torch.sum(logits[val_idx].argmax(dim=1) == labels[val_idx]).item() / len(val_idx)
-        print("Train Accuracy: {:.4f} | Train Loss: {:.4f} | Validation Accuracy: {:.4f} | Validation loss: {:.4f}".
-              format(train_acc, loss.item(), val_acc, val_loss.item()))
+        #print("Train Accuracy: {:.4f} | Train Loss: {:.4f} | Validation Accuracy: {:.4f} | Validation loss: {:.4f}".
+        #      format(train_acc, loss.item(), val_acc, val_loss.item()))
     print()
 
     model.eval()

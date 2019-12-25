@@ -43,6 +43,8 @@ def load_data(args):
         return citegrh.load_nell_0_01()
     elif args.dataset == 'nell.0.1':
         return citegrh.load_nell_0_1()
+    elif args.dataset == 'RMAT':
+        return citegrh.load_RMAT('enwiki',100,10)
     elif args.dataset == 'syn':
         return citegrh.load_synthetic(args)
     elif args.dataset == 'CoraFull':

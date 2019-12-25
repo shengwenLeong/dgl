@@ -35,20 +35,22 @@ class SGConv(nn.Module):
         If not None, applies normalization to the updated node features.
     """
     def __init__(self,
+                 g,
                  in_feats,
                  out_feats,
                  k=1,
                  cached=False,
-                 bias=True,
+                 bias=False,
                  norm=None):
         super(SGConv, self).__init__()
+        self.g = g
         self.fc = nn.Linear(in_feats, out_feats, bias=bias)
         self._cached = cached
         self._cached_h = None
         self._k = k
         self.norm = norm
 
-    def forward(self, graph, feat):
+    def forward(self, feat):
         r"""Compute Simplifying Graph Convolution layer.
 
         Parameters
@@ -70,7 +72,7 @@ class SGConv(nn.Module):
         If ``cache`` is se to True, ``feat`` and ``graph`` should not change during
         training, or you will get wrong results.
         """
-        graph = graph.local_var()
+        graph = self.g.local_var()
         if self._cached_h is not None:
             feat = self._cached_h
         else:

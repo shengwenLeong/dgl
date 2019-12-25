@@ -35,11 +35,12 @@ def main(args):
     print("""----Data statistics------'
       #Nodes %d
       #Edges %d
+      #Feature %d
       #Classes %d
       #Train samples %d
       #Val samples %d
       #Test samples %d""" %
-          (n_nodes, n_edges, n_classes,
+          (n_nodes, n_edges, in_feats, n_classes,
               train_mask.sum().item(),
               val_mask.sum().item(),
               test_mask.sum().item()))
@@ -61,9 +62,7 @@ def main(args):
     if args.self_loop:
         g.remove_edges_from(g.selfloop_edges())
         g.add_edges_from(zip(g.nodes(), g.nodes()))
-    print("+++++++++++")
     g = DGLGraph(g)
-    print("-------")
     n_edges = g.number_of_edges()
     # normalization
     degs = g.in_degrees().float()
