@@ -51,6 +51,12 @@ class BaseRGCN(nn.Module):
         return None
 
     def forward(self, h):
+        stage1 = 0
+        stage2 = 0
+        stage3 = 0
         for layer in self.layers:
-            h = layer(self.graph, h, self.graph.edata['type'], self.graph.edata['norm'])
-        return h
+            h, s1, s2, s3 = layer(self.graph, h, self.graph.edata['type'], self.graph.edata['norm'])
+            stage1 += s1
+            stage2 += s2
+            stage3 += s3
+        return h, stage1, stage2, stage3

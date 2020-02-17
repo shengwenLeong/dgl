@@ -46,11 +46,14 @@ class GraphConv_GRU(nn.Module):
 
         if self._in_feats > self._out_feats:
             # mult W first to reduce the feature size for aggregation.
+            t_s1 = time.perf_counter()
             feat_ = th.matmul(feat, self.weight)
+            t_s2 = time.perf_counter()
             graph.ndata['h'] = feat_
             graph.update_all(fn.copy_src(src='h', out='m'),
                              fn.sum(msg='m', out='h'))
             rst = graph.ndata['h']
+            t_s3 = time.perf_counter()
         else:
             # aggregate first then mult W
             graph.ndata['h'] = feat
@@ -67,7 +70,11 @@ class GraphConv_GRU(nn.Module):
         if self._activation is not None:
             rst = self._activation(rst)
         rst_ = self.rnn(feat, rst)
-        return rst_
+        t_s4 = time.perf_counter()
+        s1 = (t_s2 - t_s1) * 1000000
+        s2 = (t_s3 - t_s2) * 1000000
+        s3 = (t_s4 - t_s3) * 1000000
+        return rst_, s1, s2, s3
 
     def extra_repr(self):
         """Set the extra representation of the module,

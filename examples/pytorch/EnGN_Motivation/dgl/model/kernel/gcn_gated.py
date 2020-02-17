@@ -97,12 +97,15 @@ class GraphConv_Gated(nn.Module):
             feat = feat * norm
 
         # mult W first to reduce the feature size for aggregation.
+        t_s1 = time.perf_counter()
         src_feat = th.matmul(feat, self.src_weight)
         dst_feat = th.matmul(feat, self.dst_weight)
+        t_s2 = time.perf_counter()
         graph.ndata['h'] = src_feat
         graph.ndata['dst_h'] = dst_feat
         graph.update_all(fn.u_mul_v('h','dst_h', 'm'),
                          fn.sum(msg='m', out='h'))
+        t_s3 = time.perf_counter()
         rst = th.sigmoid(graph.ndata['h'])
         rst = rst.mul(src_feat)
         rst = th.matmul(rst, self.weight)
@@ -115,8 +118,11 @@ class GraphConv_Gated(nn.Module):
 
         if self._activation is not None:
             rst = self._activation(rst)
-
-        return rst
+        t_s4 = time.perf_counter()
+        s1 = (t_s2 - t_s1) * 1000000
+        s2 = (t_s3 - t_s2) * 1000000
+        s3 = (t_s4 - t_s3) * 1000000
+        return rst, s1, s2, s3
 
     def extra_repr(self):
         """Set the extra representation of the module,
